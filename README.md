@@ -5,6 +5,7 @@ A FancyZones-style window manager for macOS. Define zones per display, hold
 
 - Custom zone layouts built in a visual editor (split, delete, drag to resize)
 - Adjustable outer margin and gap between zones
+- Windows glide into zones, and return to their old size when dragged back out
 - Per-display layouts, including portrait monitors (rows by default)
 - Lives in the menu bar; no Dock icon unless a window is open
 
@@ -34,9 +35,10 @@ after every rebuild.
 | --- | --- |
 | Snap a window | Start dragging its title bar, hold **Shift**, release over a zone |
 | Cancel a snap mid-drag | Let go of Shift before releasing the mouse |
+| Unsnap a window | Drag it out of its zone; it returns to its pre-snap size |
 | Pick a layout for a display | Menu bar icon → choose under that display's name |
 | Edit layouts | Menu bar icon → **Edit Zones…** |
-| Change gaps or snap key | Menu bar icon → **Settings…** (gaps are also in the editor) |
+| Change gaps, snap key, animation, size restore | Menu bar icon → **Settings…** (gaps are also in the editor) |
 
 ### Zone editor
 
@@ -57,6 +59,17 @@ Each display has its own layout. While you drag, the zones of the display under
 the cursor are shown, so you can drag a window from one monitor into a zone on
 another. Displays you haven't assigned a layout get the first columns layout if
 they're landscape, or the first rows layout if they're portrait.
+
+### Restore and animation
+
+When you drag a snapped window, it goes back to the size it had before it was
+snapped, with the cursor kept at the same spot along the title bar. If you
+resized it yourself after snapping, it's left alone. Turn this off with
+**Restore size when dragged out of a zone**.
+
+Snapping animates over 200 ms by default (adjustable from 100 to 500 ms, or off).
+macOS has no API to animate another app's window, so MacZones resizes it in
+small steps; heavy apps (Xcode, browsers) may look a little choppy.
 
 ## Config
 
@@ -87,6 +100,7 @@ quits. It needs no permissions and doesn't touch your config. Native controls
 
 - Apps with a minimum window size, or that resize in fixed steps (Terminal),
   may not fill a zone exactly.
+- Restoring size mid-drag may flicker in some Electron and Chromium apps.
 - Full-screen windows and windows of apps that don't support Accessibility
   can't be snapped.
 - Not sandboxed, so it can't ship on the Mac App Store.

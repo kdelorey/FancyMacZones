@@ -14,7 +14,8 @@ extension SnapModifier {
 
 /// Watches global mouse events. When the user drags a window while holding the
 /// snap modifier, shows the zones of the screen under the cursor and, on
-/// release, moves the window into the highlighted zone.
+/// release, moves the window into the highlighted zone. Dragging a snapped
+/// window back out restores the size it had before it was snapped.
 ///
 /// macOS has no "window drag began" event, so a drag counts as a window move
 /// once the window under the cursor at drag start has changed position.
@@ -22,6 +23,8 @@ extension SnapModifier {
 final class DragSnapController {
     private let store: ConfigStore
     private let overlay: OverlayController
+    private let animator = WindowAnimator()
+    private var memory = SnapMemory()
     private var monitors: [Any] = []
     private var drag: DragState?
 
@@ -29,7 +32,10 @@ final class DragSnapController {
         /// Nil when no movable window was under the cursor; the drag is ignored.
         var window: AXWindow?
         var startOrigin: CGPoint?
+        var startSize: CGSize?
         var isMovingWindow = false
+        /// The size to restore if this window is snapped on release.
+        var preSnapSize: CGSize?
         var target: ZoneFrame?
     }
 
@@ -78,9 +84,10 @@ final class DragSnapController {
 
     private func dragged() {
         if drag == nil {
-            // First drag event: remember which window is under the cursor and where it is.
+            // First drag event: remember which window is under the cursor and its frame.
             let window = AXWindow.under(ScreenCoordinates.mouseLocation)
-            drag = DragState(window: window, startOrigin: window?.position)
+            if let window { animator.cancel(window) }
+            drag = DragState(window: window, startOrigin: window?.position, startSize: window?.size)
             return
         }
         guard var state = drag, let window = state.window else { return }
@@ -88,9 +95,27 @@ final class DragSnapController {
             guard let start = state.startOrigin, let now = window.position,
                   hypot(now.x - start.x, now.y - start.y) >= 1 else { return }
             state.isMovingWindow = true
+            state.preSnapSize = leaveZone(window, at: now) ?? state.startSize
             drag = state
         }
         updateSnapTarget()
+    }
+
+    /// If `window` is still the size MacZones snapped it to, restores its
+    /// pre-snap size (when enabled) and returns that size.
+    private func leaveZone(_ window: AXWindow, at origin: CGPoint) -> CGSize? {
+        guard let entry = memory.take(window), let size = window.size, entry.matches(size) else { return nil }
+        guard store.config.restoreSizeOnUnsnap else { return entry.originalSize }
+
+        // Keep the cursor at the same relative spot along the title bar.
+        let cursor = ScreenCoordinates.mouseLocation
+        let grab = size.width > 0 ? min(max((cursor.x - origin.x) / size.width, 0), 1) : 0.5
+        let restoredOrigin = CGPoint(x: (cursor.x - grab * entry.originalSize.width).rounded(), y: origin.y)
+        let resume = window.suspendEnhancedUserInterface()
+        window.setSize(entry.originalSize)
+        window.setPosition(restoredOrigin)
+        resume()
+        return entry.originalSize
     }
 
     private func updateSnapTarget() {
@@ -112,17 +137,63 @@ final class DragSnapController {
         defer { cancel() }
         guard let state = drag, state.isMovingWindow, modifierHeld,
               let window = state.window, let target = state.target else { return }
-        window.setFrame(target.rect)
-        // Some apps re-apply their drag position just after mouse-up; set it again once they settle.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-            if let origin = window.position, origin != target.rect.origin {
-                window.setFrame(target.rect)
+        snap(window, to: target.rect, preSnapSize: state.preSnapSize)
+    }
+
+    private func snap(_ window: AXWindow, to rect: CGRect, preSnapSize: CGSize?) {
+        let settle = { [weak self] in
+            // Some apps re-apply their drag position just after mouse-up; correct it
+            // once they settle, then record the size they actually took.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                if let origin = window.position, origin != rect.origin {
+                    window.setFrame(rect)
+                }
+                if let preSnapSize, let snapped = window.size {
+                    self?.memory.remember(window, originalSize: preSnapSize, snappedSize: snapped)
+                }
             }
+        }
+        if store.config.animateSnapping {
+            animator.animate(window, to: rect, duration: store.config.animationDuration, completion: settle)
+        } else {
+            window.setFrame(rect)
+            settle()
         }
     }
 
     private func cancel() {
         drag = nil
         overlay.hide()
+    }
+}
+
+/// Sizes windows had before they were snapped, so dragging them out of a zone
+/// can put them back.
+struct SnapMemory {
+    struct Entry {
+        let window: AXWindow
+        let originalSize: CGSize
+        let snappedSize: CGSize
+
+        /// Whether the window still has its snapped size, i.e. the user hasn't
+        /// resized it since. Allows for apps that round their size.
+        func matches(_ size: CGSize) -> Bool {
+            abs(size.width - snappedSize.width) <= 2 && abs(size.height - snappedSize.height) <= 2
+        }
+    }
+
+    private var entries: [Entry] = []
+    private let capacity = 128
+
+    mutating func remember(_ window: AXWindow, originalSize: CGSize, snappedSize: CGSize) {
+        entries.removeAll { $0.window.isSame(window) }
+        entries.append(Entry(window: window, originalSize: originalSize, snappedSize: snappedSize))
+        if entries.count > capacity { entries.removeFirst(entries.count - capacity) }
+    }
+
+    /// Removes and returns the entry for `window`.
+    mutating func take(_ window: AXWindow) -> Entry? {
+        guard let index = entries.firstIndex(where: { $0.window.isSame(window) }) else { return nil }
+        return entries.remove(at: index)
     }
 }

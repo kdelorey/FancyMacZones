@@ -21,6 +21,19 @@ struct SettingsView: View {
                     }
                 }
                 Toggle("Show zone numbers", isOn: $store.config.showZoneNumbers)
+                Toggle("Restore size when dragged out of a zone", isOn: $store.config.restoreSizeOnUnsnap)
+                Toggle("Animate windows into zones", isOn: $store.config.animateSnapping)
+                if store.config.animateSnapping {
+                    LabeledContent("Animation length") {
+                        HStack {
+                            Slider(value: $store.config.animationDuration, in: AppConfig.animationDurationRange, step: 0.05)
+                                .frame(width: 140)
+                            Text("\(Int((store.config.animationDuration * 1000).rounded())) ms")
+                                .monospacedDigit()
+                                .frame(width: 52, alignment: .trailing)
+                        }
+                    }
+                }
             }
 
             Section("Gaps") {

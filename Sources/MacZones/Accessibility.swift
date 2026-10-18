@@ -65,9 +65,8 @@ struct AXWindow {
         return element.axValue(kAXSizeAttribute, .cgSize, &size) ? size : nil
     }
 
-    var isResizable: Bool {
-        var settable = DarwinBoolean(false)
-        return AXUIElementIsAttributeSettable(element, kAXSizeAttribute as CFString, &settable) == .success && settable.boolValue
+    func isSame(_ other: AXWindow) -> Bool {
+        CFEqual(element, other.element)
     }
 
     /// Moves and resizes the window to `rect`.
@@ -76,38 +75,46 @@ struct AXWindow {
     /// grow into the target screen, and the second move corrects apps that
     /// shift themselves when resized or that clamp size on the old screen.
     func setFrame(_ rect: CGRect) {
-        withEnhancedUserInterfaceDisabled {
-            setPosition(rect.origin)
-            setSize(rect.size)
-            setPosition(rect.origin)
-        }
+        let resume = suspendEnhancedUserInterface()
+        setPosition(rect.origin)
+        setSize(rect.size)
+        setPosition(rect.origin)
+        resume()
     }
 
-    private func setPosition(_ point: CGPoint) {
-        var value = point
-        if let axValue = AXValueCreate(.cgPoint, &value) {
-            AXUIElementSetAttributeValue(element, kAXPositionAttribute as CFString, axValue)
-        }
+    /// One intermediate frame of an animation: a single move and resize, with
+    /// none of `setFrame`'s corrections. Call inside `suspendEnhancedUserInterface`.
+    func setAnimationFrame(_ rect: CGRect) {
+        setPosition(rect.origin)
+        setSize(rect.size)
     }
 
-    private func setSize(_ size: CGSize) {
+    func setSize(_ size: CGSize) {
         var value = size
         if let axValue = AXValueCreate(.cgSize, &value) {
             AXUIElementSetAttributeValue(element, kAXSizeAttribute as CFString, axValue)
         }
     }
 
-    /// Chromium and Electron apps animate frame changes while
+    func setPosition(_ point: CGPoint) {
+        var value = point
+        if let axValue = AXValueCreate(.cgPoint, &value) {
+            AXUIElementSetAttributeValue(element, kAXPositionAttribute as CFString, axValue)
+        }
+    }
+
+    /// Chromium and Electron apps animate frame changes themselves while
     /// AXEnhancedUserInterface is on, which makes the size step land wrong.
-    private func withEnhancedUserInterfaceDisabled(_ body: () -> Void) {
+    /// Turns it off if needed and returns a closure that turns it back on.
+    func suspendEnhancedUserInterface() -> () -> Void {
         let app = AXUIElementCreateApplication(pid)
         let attribute = "AXEnhancedUserInterface" as CFString
         var current: CFTypeRef?
         let wasEnabled = AXUIElementCopyAttributeValue(app, attribute, &current) == .success
             && (current as? Bool) == true
-        if wasEnabled { AXUIElementSetAttributeValue(app, attribute, kCFBooleanFalse) }
-        body()
-        if wasEnabled { AXUIElementSetAttributeValue(app, attribute, kCFBooleanTrue) }
+        guard wasEnabled else { return {} }
+        AXUIElementSetAttributeValue(app, attribute, kCFBooleanFalse)
+        return { AXUIElementSetAttributeValue(app, attribute, kCFBooleanTrue) }
     }
 }
 

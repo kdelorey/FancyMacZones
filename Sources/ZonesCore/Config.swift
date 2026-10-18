@@ -55,19 +55,34 @@ public struct AppConfig: Codable, Equatable, Sendable {
     public var gaps: GapSettings
     public var snapModifier: SnapModifier
     public var showZoneNumbers: Bool
+    /// Whether a snapped window returns to its pre-snap size when dragged out of its zone.
+    public var restoreSizeOnUnsnap: Bool
+    /// Whether snapping glides the window into its zone instead of jumping.
+    public var animateSnapping: Bool
+    /// Length of the snap animation, in seconds.
+    public var animationDuration: Double
+
+    public static let animationDurationRange: ClosedRange<Double> = 0.1...0.5
 
     public init(
         layouts: [ZoneLayout] = LayoutPresets.defaults,
         screenLayouts: [String: UUID] = [:],
         gaps: GapSettings = GapSettings(),
         snapModifier: SnapModifier = .shift,
-        showZoneNumbers: Bool = true
+        showZoneNumbers: Bool = true,
+        restoreSizeOnUnsnap: Bool = true,
+        animateSnapping: Bool = true,
+        animationDuration: Double = 0.2
     ) {
         self.layouts = layouts.isEmpty ? LayoutPresets.defaults : layouts
         self.screenLayouts = screenLayouts
         self.gaps = gaps
         self.snapModifier = snapModifier
         self.showZoneNumbers = showZoneNumbers
+        self.restoreSizeOnUnsnap = restoreSizeOnUnsnap
+        self.animateSnapping = animateSnapping
+        self.animationDuration = min(max(animationDuration, Self.animationDurationRange.lowerBound),
+                                     Self.animationDurationRange.upperBound)
     }
 
     /// The layout for a screen: its assignment if valid, otherwise the first
@@ -103,7 +118,8 @@ public struct AppConfig: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case layouts, screenLayouts, gaps, snapModifier, showZoneNumbers
+        case layouts, screenLayouts, gaps, snapModifier, showZoneNumbers, restoreSizeOnUnsnap
+        case animateSnapping, animationDuration
     }
 
     public init(from decoder: Decoder) throws {
@@ -114,7 +130,12 @@ public struct AppConfig: Codable, Equatable, Sendable {
             screenLayouts: try container.decodeIfPresent([String: UUID].self, forKey: .screenLayouts) ?? [:],
             gaps: try container.decodeIfPresent(GapSettings.self, forKey: .gaps) ?? fallback.gaps,
             snapModifier: try container.decodeIfPresent(SnapModifier.self, forKey: .snapModifier) ?? fallback.snapModifier,
-            showZoneNumbers: try container.decodeIfPresent(Bool.self, forKey: .showZoneNumbers) ?? fallback.showZoneNumbers
+            showZoneNumbers: try container.decodeIfPresent(Bool.self, forKey: .showZoneNumbers) ?? fallback.showZoneNumbers,
+            restoreSizeOnUnsnap: try container.decodeIfPresent(Bool.self, forKey: .restoreSizeOnUnsnap)
+                ?? fallback.restoreSizeOnUnsnap,
+            animateSnapping: try container.decodeIfPresent(Bool.self, forKey: .animateSnapping) ?? fallback.animateSnapping,
+            animationDuration: try container.decodeIfPresent(Double.self, forKey: .animationDuration)
+                ?? fallback.animationDuration
         )
     }
 }

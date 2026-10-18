@@ -169,6 +169,9 @@ import Testing
         var config = AppConfig()
         config.gaps = GapSettings(outer: 4, inner: 16)
         config.snapModifier = .option
+        config.restoreSizeOnUnsnap = false
+        config.animateSnapping = false
+        config.animationDuration = 0.35
         config.screenLayouts["screen-a"] = config.layouts[2].id
         let data = try JSONEncoder().encode(config)
         let decoded = try JSONDecoder().decode(AppConfig.self, from: data)
@@ -180,6 +183,14 @@ import Testing
         #expect(decoded.gaps == GapSettings(outer: 2, inner: 3))
         #expect(!decoded.layouts.isEmpty)
         #expect(decoded.snapModifier == .shift)
+        #expect(decoded.restoreSizeOnUnsnap)
+        #expect(decoded.animateSnapping)
+        #expect(decoded.animationDuration == 0.2)
+    }
+
+    @Test func animationDurationIsClamped() throws {
+        let decoded = try JSONDecoder().decode(AppConfig.self, from: Data(#"{"animationDuration":9}"#.utf8))
+        #expect(decoded.animationDuration == AppConfig.animationDurationRange.upperBound)
     }
 
     @Test func brokenFractionsAreRepaired() throws {
