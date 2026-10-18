@@ -63,7 +63,7 @@ they're landscape, or the first rows layout if they're portrait.
 ### Restore and animation
 
 When you drag a snapped window, it goes back to the size it had before it was
-snapped, with the cursor kept at the same spot along the title bar. If you
+snapped (animated, if animation is on), with the cursor kept at the same spot along the title bar. If you
 resized it yourself after snapping, it's left alone. Turn this off with
 **Restore size when dragged out of a zone**.
 
@@ -100,7 +100,7 @@ quits. It needs no permissions and doesn't touch your config. Native controls
 
 - Apps with a minimum window size, or that resize in fixed steps (Terminal),
   may not fill a zone exactly.
-- Restoring size mid-drag may flicker in some Electron and Chromium apps.
+- Some apps (Ghostty, for one) override resizes made mid-drag; the restored size then lands when you release the mouse.
 - Full-screen windows and windows of apps that don't support Accessibility
   can't be snapped.
 - Not sandboxed, so it can't ship on the Mac App Store.

@@ -34,9 +34,29 @@ final class DragSnapController {
         var startOrigin: CGPoint?
         var startSize: CGSize?
         var isMovingWindow = false
-        /// The size to restore if this window is snapped on release.
+        /// The window's size before it was first snapped, remembered again if
+        /// this drag snaps it.
         var preSnapSize: CGSize?
+        /// Set when this drag pulled the window out of a zone.
+        var restore: Restore?
         var target: ZoneFrame?
+    }
+
+    /// Where the cursor grabbed the window when it left its zone, so the
+    /// restored window can be kept at the same spot under the cursor.
+    private struct Restore {
+        let size: CGSize
+        /// Grab point as a fraction of the window's width.
+        let grabFraction: CGFloat
+        /// Grab point's distance below the window's top edge.
+        let grabOffsetY: CGFloat
+
+        /// The origin that puts a window of `size` under the current cursor.
+        func origin(for size: CGSize) -> CGPoint {
+            let cursor = ScreenCoordinates.mouseLocation
+            return CGPoint(x: (cursor.x - grabFraction * size.width).rounded(),
+                           y: (cursor.y - grabOffsetY).rounded())
+        }
     }
 
     init(store: ConfigStore, overlay: OverlayController) {
@@ -95,27 +115,37 @@ final class DragSnapController {
             guard let start = state.startOrigin, let now = window.position,
                   hypot(now.x - start.x, now.y - start.y) >= 1 else { return }
             state.isMovingWindow = true
-            state.preSnapSize = leaveZone(window, at: now) ?? state.startSize
+            state.restore = leaveZone(window, at: now)
+            state.preSnapSize = state.restore?.size ?? state.startSize
             drag = state
         }
         updateSnapTarget()
     }
 
-    /// If `window` is still the size MacZones snapped it to, restores its
-    /// pre-snap size (when enabled) and returns that size.
-    private func leaveZone(_ window: AXWindow, at origin: CGPoint) -> CGSize? {
+    /// If `window` is still the size MacZones snapped it to, starts restoring
+    /// its pre-snap size (when enabled) and returns how to place it.
+    private func leaveZone(_ window: AXWindow, at origin: CGPoint) -> Restore? {
         guard let entry = memory.take(window), let size = window.size, entry.matches(size) else { return nil }
-        guard store.config.restoreSizeOnUnsnap else { return entry.originalSize }
-
-        // Keep the cursor at the same relative spot along the title bar.
         let cursor = ScreenCoordinates.mouseLocation
-        let grab = size.width > 0 ? min(max((cursor.x - origin.x) / size.width, 0), 1) : 0.5
-        let restoredOrigin = CGPoint(x: (cursor.x - grab * entry.originalSize.width).rounded(), y: origin.y)
-        let resume = window.suspendEnhancedUserInterface()
-        window.setSize(entry.originalSize)
-        window.setPosition(restoredOrigin)
-        resume()
-        return entry.originalSize
+        let restore = Restore(
+            size: entry.originalSize,
+            grabFraction: size.width > 0 ? min(max((cursor.x - origin.x) / size.width, 0), 1) : 0.5,
+            grabOffsetY: max(cursor.y - origin.y, 0))
+        guard store.config.restoreSizeOnUnsnap else {
+            // Still carried so a later snap remembers the true original size.
+            return Restore(size: entry.originalSize, grabFraction: 0, grabOffsetY: 0)
+        }
+
+        if store.config.animateSnapping {
+            animator.animateResize(window, from: size, to: restore.size,
+                                   duration: store.config.animationDuration, origin: restore.origin(for:))
+        } else {
+            let resume = window.suspendEnhancedUserInterface()
+            window.setSize(restore.size)
+            window.setPosition(restore.origin(for: restore.size))
+            resume()
+        }
+        return restore
     }
 
     private func updateSnapTarget() {
@@ -135,9 +165,26 @@ final class DragSnapController {
 
     private func released() {
         defer { cancel() }
-        guard let state = drag, state.isMovingWindow, modifierHeld,
-              let window = state.window, let target = state.target else { return }
-        snap(window, to: target.rect, preSnapSize: state.preSnapSize)
+        guard let state = drag, state.isMovingWindow, let window = state.window else { return }
+        if modifierHeld, let target = state.target {
+            snap(window, to: target.rect, preSnapSize: state.preSnapSize)
+        } else if let restore = state.restore, store.config.restoreSizeOnUnsnap {
+            finishRestore(window, restore)
+        }
+    }
+
+    /// Some apps (Ghostty, for one) override resizes made while they are being
+    /// dragged, so the restored size is applied again once the drag ends.
+    private func finishRestore(_ window: AXWindow, _ restore: Restore) {
+        animator.cancel(window)
+        let target = CGRect(origin: restore.origin(for: restore.size), size: restore.size)
+        let apply = {
+            guard let size = window.size,
+                  abs(size.width - target.width) > 2 || abs(size.height - target.height) > 2 else { return }
+            window.setFrame(target)
+        }
+        apply()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { apply() }
     }
 
     private func snap(_ window: AXWindow, to rect: CGRect, preSnapSize: CGSize?) {
