@@ -130,7 +130,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func flashZones(_ zones: [ZoneFrame], on screen: DisplayScreen) {
         flashTask?.cancel()
-        overlay.show(on: screen, zones: zones, highlighted: nil)
+        overlay.show(on: screen, zones: zones)
         flashTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(2))
             guard !Task.isCancelled else { return }

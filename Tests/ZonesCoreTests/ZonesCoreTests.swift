@@ -64,6 +64,46 @@ import Testing
         #expect(ZoneGeometry.zone(at: CGPoint(x: 2, y: 2), in: zones)?.number == 1)
     }
 
+    @Test func spanningInGapCoversBothZones() throws {
+        let zones = ZoneGeometry.zones(.even(.horizontal, 3), in: screen, gaps: GapSettings(outer: 10, inner: 10))
+        let gapX = (zones[0].rect.maxX + zones[1].rect.minX) / 2
+        let target = try #require(ZoneGeometry.target(at: CGPoint(x: gapX, y: 300), in: zones, spanDistance: 20))
+        #expect(target.zones.map(\.number) == [1, 2])
+        #expect(target.rect == zones[0].rect.union(zones[1].rect))
+    }
+
+    @Test func spanningIgnoresZoneInteriors() throws {
+        let zones = ZoneGeometry.zones(.even(.horizontal, 3), in: screen, gaps: GapSettings(outer: 10, inner: 10))
+        let target = try #require(ZoneGeometry.target(at: CGPoint(x: zones[1].rect.midX, y: 300), in: zones, spanDistance: 20))
+        #expect(target.zones.map(\.number) == [2])
+        #expect(target.rect == zones[1].rect)
+    }
+
+    @Test func spanningOffMeansSingleZone() throws {
+        let zones = ZoneGeometry.zones(.even(.horizontal, 2), in: screen, gaps: GapSettings(outer: 10, inner: 10))
+        let gapX = (zones[0].rect.maxX + zones[1].rect.minX) / 2
+        let target = try #require(ZoneGeometry.target(at: CGPoint(x: gapX, y: 300), in: zones, spanDistance: nil))
+        #expect(target.zones.count == 1)
+    }
+
+    @Test func gridCornerSpansAllFour() throws {
+        let grid = LayoutNode.split(.vertical, [.even(.horizontal, 2), .even(.horizontal, 2)])
+        let zones = ZoneGeometry.zones(grid, in: screen, gaps: GapSettings(outer: 0, inner: 10))
+        let target = try #require(ZoneGeometry.target(at: CGPoint(x: 500, y: 300), in: zones, spanDistance: 20))
+        #expect(target.zones.count == 4)
+        #expect(target.rect == screen)
+    }
+
+    @Test func spanGrowsToFillRectangle() throws {
+        // columns[A, rows[B, C]]: spanning A and B covers C's rows too, since A is full height.
+        let root = LayoutNode.split(.horizontal, [.zone(), .even(.vertical, 2)])
+        let zones = ZoneGeometry.zones(root, in: screen, gaps: GapSettings(outer: 0, inner: 10))
+        let gapX = (zones[0].rect.maxX + zones[1].rect.minX) / 2
+        let target = try #require(ZoneGeometry.target(at: CGPoint(x: gapX, y: 100), in: zones, spanDistance: 20))
+        #expect(Set(target.zones.map(\.number)) == [1, 2, 3])
+        #expect(target.rect == screen)
+    }
+
     @Test func dividerRoundTripsThroughFraction() {
         let gaps = GapSettings(outer: 10, inner: 20)
         var root = LayoutNode.even(.horizontal, 3)
@@ -172,6 +212,8 @@ import Testing
         config.restoreSizeOnUnsnap = false
         config.animateSnapping = false
         config.animationDuration = 0.35
+        config.spanZones = false
+        config.spanDistance = 32
         config.screenLayouts["screen-a"] = config.layouts[2].id
         let data = try JSONEncoder().encode(config)
         let decoded = try JSONDecoder().decode(AppConfig.self, from: data)
@@ -186,6 +228,8 @@ import Testing
         #expect(decoded.restoreSizeOnUnsnap)
         #expect(decoded.animateSnapping)
         #expect(decoded.animationDuration == 0.2)
+        #expect(decoded.spanZones)
+        #expect(decoded.effectiveSpanDistance == 20)
     }
 
     @Test func animationDurationIsClamped() throws {

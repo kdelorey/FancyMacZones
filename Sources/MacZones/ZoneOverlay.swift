@@ -8,7 +8,7 @@ import ZonesCore
 final class OverlayModel {
     /// Zones in view-local coordinates.
     var zones: [ZoneFrame] = []
-    var highlighted: UUID?
+    var highlighted: Set<UUID> = []
     var showNumbers = true
 }
 
@@ -16,12 +16,25 @@ final class OverlayModel {
 struct ZoneOverlayView: View {
     let model: OverlayModel
 
+    /// The area a window will fill when it spans more than one zone.
+    private var spanRect: CGRect? {
+        let spanned = model.zones.filter { model.highlighted.contains($0.id) }
+        guard spanned.count > 1 else { return nil }
+        return SnapTarget(zones: spanned).rect
+    }
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             ForEach(model.zones) { zone in
-                ZoneTile(number: zone.number, isHighlighted: zone.id == model.highlighted, showNumber: model.showNumbers)
+                ZoneTile(number: zone.number, isHighlighted: model.highlighted.contains(zone.id), showNumber: model.showNumbers)
                     .frame(width: zone.rect.width, height: zone.rect.height)
                     .offset(x: zone.rect.minX, y: zone.rect.minY)
+            }
+            if let span = spanRect {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.9), style: StrokeStyle(lineWidth: 3, dash: [10, 6]))
+                    .frame(width: span.width, height: span.height)
+                    .offset(x: span.minX, y: span.minY)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -76,7 +89,7 @@ final class OverlayController {
     }
 
     /// Shows `screen`'s zones with `highlighted` emphasised, hiding other screens' overlays.
-    func show(on screen: DisplayScreen, zones: [ZoneFrame], highlighted: UUID?) {
+    func show(on screen: DisplayScreen, zones: [ZoneFrame], highlighted: Set<UUID> = []) {
         if visibleScreenID != screen.id {
             hide()
         }

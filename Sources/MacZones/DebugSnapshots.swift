@@ -21,7 +21,14 @@ enum DebugSnapshots {
             let zones = ZoneGeometry.zones(layout.root, in: CGRect(origin: .zero, size: size), gaps: config.gaps)
             let model = OverlayModel()
             model.zones = zones
-            model.highlighted = zones.dropFirst().first?.id
+            // Cursor in the first gap, so the snapshot shows spanning.
+            if zones.count > 1 {
+                let gap = CGPoint(x: (zones[0].rect.maxX + zones[1].rect.minX) / 2,
+                                  y: (zones[0].rect.maxY + zones[1].rect.minY) / 2)
+                let probe = zones[0].rect.maxX < zones[1].rect.minX ? CGPoint(x: gap.x, y: zones[0].rect.midY)
+                                                                    : CGPoint(x: zones[0].rect.midX, y: gap.y)
+                model.highlighted = ZoneGeometry.target(at: probe, in: zones, spanDistance: config.effectiveSpanDistance)?.zoneIDs ?? []
+            }
             let overlay = ZoneOverlayView(model: model)
                 .frame(width: size.width, height: size.height)
                 .background(LinearGradient(colors: [.indigo, .teal], startPoint: .topLeading, endPoint: .bottomTrailing))

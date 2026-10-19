@@ -21,6 +21,18 @@ struct SettingsView: View {
                     }
                 }
                 Toggle("Show zone numbers", isOn: $store.config.showZoneNumbers)
+                Toggle("Span zones when dragging near the gap between them", isOn: $store.config.spanZones)
+                if store.config.spanZones {
+                    LabeledContent("Span distance") {
+                        HStack {
+                            Slider(value: $store.config.spanDistance, in: AppConfig.spanDistanceRange, step: 1)
+                                .frame(width: 140)
+                            Text("\(Int(store.config.spanDistance)) pt")
+                                .monospacedDigit()
+                                .frame(width: 52, alignment: .trailing)
+                        }
+                    }
+                }
                 Toggle("Restore size when dragged out of a zone", isOn: $store.config.restoreSizeOnUnsnap)
                 Toggle("Animate windows into zones", isOn: $store.config.animateSnapping)
                 if store.config.animateSnapping {

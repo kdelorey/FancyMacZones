@@ -14,7 +14,8 @@ extension SnapModifier {
 
 /// Watches global mouse events. When the user drags a window while holding the
 /// snap modifier, shows the zones of the screen under the cursor and, on
-/// release, moves the window into the highlighted zone. Dragging a snapped
+/// release, moves the window into the highlighted zone (or zones, when the
+/// cursor is near the gap between them). Dragging a snapped
 /// window back out restores the size it had before it was snapped.
 ///
 /// macOS has no "window drag began" event, so a drag counts as a window move
@@ -39,7 +40,7 @@ final class DragSnapController {
         var preSnapSize: CGSize?
         /// Set when this drag pulled the window out of a zone.
         var restore: Restore?
-        var target: ZoneFrame?
+        var target: SnapTarget?
     }
 
     /// Where the cursor grabbed the window when it left its zone, so the
@@ -158,9 +159,9 @@ final class DragSnapController {
         let cursor = ScreenCoordinates.mouseLocation
         guard let screen = DisplayScreen.containing(cursor) else { return }
         let zones = store.zones(for: screen)
-        let target = ZoneGeometry.zone(at: cursor, in: zones)
+        let target = ZoneGeometry.target(at: cursor, in: zones, spanDistance: store.config.effectiveSpanDistance)
         drag?.target = target
-        overlay.show(on: screen, zones: zones, highlighted: target?.id)
+        overlay.show(on: screen, zones: zones, highlighted: target?.zoneIDs ?? [])
     }
 
     private func released() {

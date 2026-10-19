@@ -34,6 +34,7 @@ after every rebuild.
 | Action | How |
 | --- | --- |
 | Snap a window | Start dragging its title bar, hold **Shift**, release over a zone |
+| Span several zones | While snapping, hold the cursor in the gap between zones; every zone within the span distance lights up and the window fills them all |
 | Cancel a snap mid-drag | Let go of Shift before releasing the mouse |
 | Unsnap a window | Drag it out of its zone; it returns to its pre-snap size |
 | Pick a layout for a display | Menu bar icon → choose under that display's name |
@@ -59,6 +60,15 @@ Each display has its own layout. While you drag, the zones of the display under
 the cursor are shown, so you can drag a window from one monitor into a zone on
 another. Displays you haven't assigned a layout get the first columns layout if
 they're landscape, or the first rows layout if they're portrait.
+
+### Spanning zones
+
+With **Span zones when dragging near the gap between them** on (the default),
+any zone within the span distance (20 pt by default, adjustable from 4 to 64)
+of the cursor is included. With the cursor in a gap, the zones on both sides light
+up; at the corner of a 2×2 grid, all four do. A dashed outline shows the area
+the window will fill. If the spanned zones don't form a rectangle, the zones
+needed to fill one are included as well.
 
 ### Restore and animation
 

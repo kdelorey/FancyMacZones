@@ -30,6 +30,20 @@ public struct ZoneFrame: Equatable, Identifiable, Sendable {
     }
 }
 
+/// One or more zones a window will be snapped to, and the rect it will fill.
+public struct SnapTarget: Equatable, Sendable {
+    public let zones: [ZoneFrame]
+    /// The smallest rect covering every zone, gaps between them included.
+    public let rect: CGRect
+
+    public init(zones: [ZoneFrame]) {
+        self.zones = zones
+        rect = zones.map(\.rect).reduce(CGRect.null) { $0.union($1) }
+    }
+
+    public var zoneIDs: Set<UUID> { Set(zones.map(\.id)) }
+}
+
 /// The draggable boundary between two children of a split.
 public struct DividerFrame: Equatable, Identifiable, Sendable {
     public let splitID: UUID
@@ -128,6 +142,35 @@ public enum ZoneGeometry {
     public static func zone(at point: CGPoint, in zones: [ZoneFrame]) -> ZoneFrame? {
         if let hit = zones.first(where: { $0.rect.contains(point) }) { return hit }
         return zones.min { distance(point, $0.rect) < distance(point, $1.rect) }
+    }
+
+    /// The zone or zones to snap to for a cursor at `point`.
+    ///
+    /// With a `spanDistance`, every zone within that distance of the cursor is
+    /// included, so a cursor in the gap between zones spans them. The set then
+    /// grows to every zone its bounding box overlaps, so the result always
+    /// fills a rectangle.
+    public static func target(at point: CGPoint, in zones: [ZoneFrame], spanDistance: Double? = nil) -> SnapTarget? {
+        var chosen: [ZoneFrame] = []
+        if let spanDistance, spanDistance > 0 {
+            chosen = zones.filter { distance(point, $0.rect) <= spanDistance }
+        }
+        if chosen.count < 2 {
+            return zone(at: point, in: zones).map { SnapTarget(zones: [$0]) }
+        }
+
+        var bounds = chosen.map(\.rect).reduce(CGRect.null) { $0.union($1) }
+        while true {
+            let overlapping = zones.filter { zone in
+                let overlap = zone.rect.intersection(bounds)
+                return !overlap.isNull && overlap.width > 0.5 && overlap.height > 0.5
+            }
+            let grown = overlapping.map(\.rect).reduce(bounds) { $0.union($1) }
+            chosen = overlapping
+            if grown == bounds { break }
+            bounds = grown
+        }
+        return SnapTarget(zones: chosen)
     }
 
     static func distance(_ point: CGPoint, _ rect: CGRect) -> CGFloat {

@@ -64,6 +64,16 @@ public struct AppConfig: Codable, Equatable, Sendable {
 
     public static let animationDurationRange: ClosedRange<Double> = 0.1...0.5
 
+    /// Whether dragging near the gap between zones spans all of them.
+    public var spanZones: Bool
+    /// How close, in points, the cursor must be to a zone for it to be spanned.
+    public var spanDistance: Double
+
+    public static let spanDistanceRange: ClosedRange<Double> = 4...64
+
+    /// `spanDistance` when spanning is on, otherwise nil.
+    public var effectiveSpanDistance: Double? { spanZones ? spanDistance : nil }
+
     public init(
         layouts: [ZoneLayout] = LayoutPresets.defaults,
         screenLayouts: [String: UUID] = [:],
@@ -72,7 +82,9 @@ public struct AppConfig: Codable, Equatable, Sendable {
         showZoneNumbers: Bool = true,
         restoreSizeOnUnsnap: Bool = true,
         animateSnapping: Bool = true,
-        animationDuration: Double = 0.2
+        animationDuration: Double = 0.2,
+        spanZones: Bool = true,
+        spanDistance: Double = 20
     ) {
         self.layouts = layouts.isEmpty ? LayoutPresets.defaults : layouts
         self.screenLayouts = screenLayouts
@@ -83,6 +95,8 @@ public struct AppConfig: Codable, Equatable, Sendable {
         self.animateSnapping = animateSnapping
         self.animationDuration = min(max(animationDuration, Self.animationDurationRange.lowerBound),
                                      Self.animationDurationRange.upperBound)
+        self.spanZones = spanZones
+        self.spanDistance = min(max(spanDistance, Self.spanDistanceRange.lowerBound), Self.spanDistanceRange.upperBound)
     }
 
     /// The layout for a screen: its assignment if valid, otherwise the first
@@ -119,7 +133,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case layouts, screenLayouts, gaps, snapModifier, showZoneNumbers, restoreSizeOnUnsnap
-        case animateSnapping, animationDuration
+        case animateSnapping, animationDuration, spanZones, spanDistance
     }
 
     public init(from decoder: Decoder) throws {
@@ -135,7 +149,9 @@ public struct AppConfig: Codable, Equatable, Sendable {
                 ?? fallback.restoreSizeOnUnsnap,
             animateSnapping: try container.decodeIfPresent(Bool.self, forKey: .animateSnapping) ?? fallback.animateSnapping,
             animationDuration: try container.decodeIfPresent(Double.self, forKey: .animationDuration)
-                ?? fallback.animationDuration
+                ?? fallback.animationDuration,
+            spanZones: try container.decodeIfPresent(Bool.self, forKey: .spanZones) ?? fallback.spanZones,
+            spanDistance: try container.decodeIfPresent(Double.self, forKey: .spanDistance) ?? fallback.spanDistance
         )
     }
 }
