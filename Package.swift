@@ -2,16 +2,16 @@
 import PackageDescription
 
 let package = Package(
-    name: "MacZones",
+    name: "FancyMacZones",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "MacZones", targets: ["MacZones"]),
+        .executable(name: "FancyMacZones", targets: ["FancyMacZones"]),
         .library(name: "ZonesCore", targets: ["ZonesCore"]),
     ],
     targets: [
         .target(name: "ZonesCore"),
         .executableTarget(
-            name: "MacZones",
+            name: "FancyMacZones",
             dependencies: ["ZonesCore"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),

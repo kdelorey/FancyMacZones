@@ -47,7 +47,7 @@ public enum ScreenOrientation: Sendable {
     }
 }
 
-/// Everything MacZones persists.
+/// Everything FancyMacZones persists.
 public struct AppConfig: Codable, Equatable, Sendable {
     public var layouts: [ZoneLayout]
     /// Screen id → layout id. Screens without an entry get a default by orientation.
@@ -168,11 +168,36 @@ extension LayoutNode {
 /// Reads and writes `AppConfig` as JSON.
 public enum ConfigFile {
     public static var defaultURL: URL {
-        if let override = ProcessInfo.processInfo.environment["MACZONES_CONFIG"] {
+        if let override = ProcessInfo.processInfo.environment["FANCYMACZONES_CONFIG"] {
             return URL(fileURLWithPath: override)
         }
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return support.appendingPathComponent("MacZones/config.json")
+        return supportDirectory.appendingPathComponent("FancyMacZones/config.json")
+    }
+
+    /// Where the app kept its config when it was called MacZones.
+    public static var legacyURL: URL {
+        supportDirectory.appendingPathComponent("MacZones/config.json")
+    }
+
+    private static var supportDirectory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+    }
+
+    /// Copies the config from `legacy` to `url` when `url` doesn't exist yet.
+    /// The legacy file is left in place.
+    ///
+    /// - Returns: Whether a config was copied.
+    @discardableResult
+    public static func migrate(from legacy: URL = legacyURL, to url: URL = defaultURL) -> Bool {
+        let files = FileManager.default
+        guard !files.fileExists(atPath: url.path), files.fileExists(atPath: legacy.path) else { return false }
+        do {
+            try files.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try files.copyItem(at: legacy, to: url)
+            return true
+        } catch {
+            return false
+        }
     }
 
     /// Loads the config, or returns defaults when the file is missing or unreadable.

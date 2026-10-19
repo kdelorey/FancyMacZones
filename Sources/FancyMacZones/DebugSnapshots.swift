@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import ZonesCore
 
-/// `MacZones --snapshot <dir>` renders the overlay, the editor canvas for every
+/// `FancyMacZones --snapshot <dir>` renders the overlay, the editor canvas for every
 /// default layout (landscape and portrait), and the editor and settings
 /// windows to PNGs, then quits. Uses an in-memory config. For checking UI
 /// changes without granting Accessibility or touching real windows.

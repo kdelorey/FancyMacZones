@@ -53,7 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func installStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.image = NSImage(systemSymbolName: "rectangle.split.3x1", accessibilityDescription: "MacZones")
+        item.button?.image = NSImage(systemSymbolName: "rectangle.split.3x1", accessibilityDescription: "FancyMacZones")
         let menu = NSMenu()
         menu.delegate = self
         item.menu = menu
@@ -90,7 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(withTitle: "Edit Zones…", action: #selector(openEditor), keyEquivalent: "e").target = self
         menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",").target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit MacZones", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(withTitle: "Quit FancyMacZones", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     }
 
     private final class LayoutChoice: NSObject {
@@ -113,7 +113,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc func openEditor() {
-        windows.show(id: "editor", title: "MacZones Zone Editor", size: CGSize(width: 1080, height: 720), resizable: true) {
+        windows.show(id: "editor", title: "FancyMacZones Zone Editor", size: CGSize(width: 1080, height: 720), resizable: true) {
             EditorView(store: self.store) { [weak self] screen, zones in
                 self?.flashZones(zones, on: screen)
             }
@@ -121,7 +121,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc func openSettings() {
-        windows.show(id: "settings", title: "MacZones Settings", size: CGSize(width: 460, height: 420), resizable: false) {
+        windows.show(id: "settings", title: "FancyMacZones Settings", size: CGSize(width: 460, height: 420), resizable: false) {
             SettingsView(store: self.store)
         }
     }
@@ -163,7 +163,7 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
             window.setContentSize(size)
             window.contentMinSize = CGSize(width: 820, height: 520)
         }
-        window.setFrameAutosaveName("MacZones.\(id)")
+        window.setFrameAutosaveName("FancyMacZones.\(id)")
         if window.frame.origin == .zero { window.center() }
         window.delegate = self
         windows[id] = window

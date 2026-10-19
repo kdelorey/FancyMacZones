@@ -123,7 +123,7 @@ final class DragSnapController {
         updateSnapTarget()
     }
 
-    /// If `window` is still the size MacZones snapped it to, starts restoring
+    /// If `window` is still the size FancyMacZones snapped it to, starts restoring
     /// its pre-snap size (when enabled) and returns how to place it.
     private func leaveZone(_ window: AXWindow, at origin: CGPoint) -> Restore? {
         guard let entry = memory.take(window), let size = window.size, entry.matches(size) else { return nil }

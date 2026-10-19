@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds MacZones.app into ./build.
+# Builds FancyMacZones.app into ./build.
 #
 #   scripts/build-app.sh            # release build, signed
 #   scripts/build-app.sh --install  # also copy to /Applications and relaunch
@@ -13,16 +13,16 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 CONFIG=release
-APP=build/MacZones.app
+APP=build/FancyMacZones.app
 INSTALL=false
 [[ "${1:-}" == "--install" ]] && INSTALL=true
 
-swift build -c "$CONFIG" --product MacZones
-BIN="$(swift build -c "$CONFIG" --show-bin-path)/MacZones"
+swift build -c "$CONFIG" --product FancyMacZones
+BIN="$(swift build -c "$CONFIG" --show-bin-path)/FancyMacZones"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN" "$APP/Contents/MacOS/MacZones"
+cp "$BIN" "$APP/Contents/MacOS/FancyMacZones"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 
 if [[ -z "${SIGN_IDENTITY:-}" ]]; then
@@ -36,9 +36,9 @@ codesign --force --sign "$SIGN_IDENTITY" "$APP"
 echo "Built $APP"
 
 if $INSTALL; then
-  pkill -x MacZones 2>/dev/null || true
-  rm -rf /Applications/MacZones.app
+  pkill -x FancyMacZones 2>/dev/null || true
+  rm -rf /Applications/FancyMacZones.app
   cp -R "$APP" /Applications/
-  open /Applications/MacZones.app
-  echo "Installed to /Applications/MacZones.app"
+  open /Applications/FancyMacZones.app
+  echo "Installed to /Applications/FancyMacZones.app"
 fi

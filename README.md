@@ -1,4 +1,4 @@
-# MacZones
+# FancyMacZones
 
 A FancyZones-style window manager for macOS. Define zones per display, hold
 **Shift** while dragging a window, and drop it into a zone to resize it to fit.
@@ -17,11 +17,11 @@ Requires macOS 14 or later.
 scripts/build-app.sh --install
 ```
 
-This builds `build/MacZones.app`, copies it to `/Applications`, and launches it.
+This builds `build/FancyMacZones.app`, copies it to `/Applications`, and launches it.
 Run `scripts/build-app.sh` without `--install` to only build.
 
 On first launch macOS asks for **Accessibility** permission (System Settings →
-Privacy & Security → Accessibility). MacZones needs it to see and move other
+Privacy & Security → Accessibility). FancyMacZones needs it to see and move other
 apps' windows. Snapping starts as soon as it is granted; no restart needed.
 
 The build is signed with your first "Apple Development" identity (override
@@ -78,14 +78,16 @@ resized it yourself after snapping, it's left alone. Turn this off with
 **Restore size when dragged out of a zone**.
 
 Snapping animates over 200 ms by default (adjustable from 100 to 500 ms, or off).
-macOS has no API to animate another app's window, so MacZones resizes it in
+macOS has no API to animate another app's window, so FancyMacZones resizes it in
 small steps; heavy apps (Xcode, browsers) may look a little choppy.
 
 ## Config
 
-Stored at `~/Library/Application Support/MacZones/config.json` and saved
+Stored at `~/Library/Application Support/FancyMacZones/config.json` and saved
 automatically. It's plain JSON, so you can back it up or edit it by hand
-(set `MACZONES_CONFIG=/path/to/file.json` to use a different file).
+(set `FANCYMACZONES_CONFIG=/path/to/file.json` to use a different file).
+On first launch after the rename from MacZones, the old config is copied over
+from `~/Library/Application Support/MacZones/`.
 
 ## Develop
 
@@ -94,11 +96,11 @@ swift test
 ```
 
 `Sources/ZonesCore` holds the layout tree, gap geometry, and config. It's pure
-Swift with unit tests. `Sources/MacZones` is the AppKit/SwiftUI app: event
+Swift with unit tests. `Sources/FancyMacZones` is the AppKit/SwiftUI app: event
 monitoring, Accessibility window control, overlay, editor, and settings.
 
 ```bash
-swift run MacZones --snapshot /tmp/maczones-snaps
+swift run FancyMacZones --snapshot /tmp/fancymaczones-snaps
 ```
 
 This renders the overlay, the editor canvas for every default layout

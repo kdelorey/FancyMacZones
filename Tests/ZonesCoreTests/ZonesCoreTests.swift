@@ -277,6 +277,24 @@ import Testing
         #expect(config.uniqueLayoutName("B") == "B")
     }
 
+    @Test func migratesLegacyConfigOnce() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let legacy = root.appendingPathComponent("MacZones/config.json")
+        let current = root.appendingPathComponent("FancyMacZones/config.json")
+        var config = AppConfig()
+        config.gaps = GapSettings(outer: 3, inner: 5)
+        try ConfigFile.save(config, to: legacy)
+
+        #expect(ConfigFile.migrate(from: legacy, to: current))
+        #expect(ConfigFile.load(from: current) == config)
+        #expect(!ConfigFile.migrate(from: legacy, to: current))
+    }
+
+    @Test func migrationWithoutLegacyDoesNothing() {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        #expect(!ConfigFile.migrate(from: root.appendingPathComponent("a.json"), to: root.appendingPathComponent("b.json")))
+    }
+
     @Test func fileRoundTrip() throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString).appendingPathComponent("config.json")

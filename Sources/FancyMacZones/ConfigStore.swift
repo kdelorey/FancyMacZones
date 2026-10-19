@@ -64,7 +64,7 @@ final class ConfigStore {
         do {
             try ConfigFile.save(config, to: fileURL)
         } catch {
-            NSLog("MacZones: failed to save config: \(error)")
+            NSLog("FancyMacZones: failed to save config: \(error)")
         }
     }
 }
