@@ -28,7 +28,6 @@ struct LayoutCanvas: View {
 
             ZStack(alignment: .topLeading) {
                 ScreenBackdrop()
-                    .onTapGesture { selectedZoneID = nil }
 
                 ForEach(resolved.zones) { zone in
                     zoneView(zone, rect: zone.rect.scaled(by: scale), canDelete: resolved.zones.count > 1)
@@ -73,8 +72,8 @@ struct LayoutCanvas: View {
                 Button("Delete Zone", role: .destructive) { onAction(.delete, zone.id) }
                     .disabled(!canDelete)
             }
-            .position(x: rect.midX, y: rect.midY)
             .help("Zone \(zone.number): \(Int(zone.rect.width))×\(Int(zone.rect.height)) pt")
+            .position(x: rect.midX, y: rect.midY)
     }
 }
 
@@ -138,7 +137,6 @@ private struct DividerHandle: View {
             .frame(width: horizontal ? 4 : min(length * 0.4, 72), height: horizontal ? min(length * 0.4, 72) : 4)
             .frame(width: horizontal ? thickness : length, height: horizontal ? length : thickness)
             .contentShape(Rectangle())
-            .position(x: rect.midX, y: rect.midY)
             .onHover { inside in
                 guard inside != isHovered else { return }
                 isHovered = inside
@@ -161,6 +159,9 @@ private struct DividerHandle: View {
                     }
             )
             .help("Drag to resize")
+            // Last: .position expands the view to the whole canvas, so anything
+            // after it would catch clicks everywhere instead of just in the gap.
+            .position(x: rect.midX, y: rect.midY)
     }
 }
 

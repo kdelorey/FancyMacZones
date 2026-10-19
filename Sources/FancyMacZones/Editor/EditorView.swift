@@ -30,7 +30,7 @@ struct EditorView: View {
             screens = DisplayScreen.all
             if previewScreen == nil { previewScreenID = screens.first?.id }
         }
-        .onChange(of: selectedLayoutID) { selectedZoneID = nil }
+        .onChange(of: selectedLayoutID) { selectedZoneID = selectedLayout?.root.zoneIDs.first }
     }
 
     // MARK: - Sidebar
@@ -143,27 +143,13 @@ struct EditorView: View {
 
     private func footer(for layout: ZoneLayout) -> some View {
         HStack(alignment: .center, spacing: 24) {
-            HStack(spacing: 4) {
-                let zone = selectedZoneID.flatMap { id in layout.root.contains(id) ? id : nil }
-                Button { act(.split(.horizontal), zone, layout) } label: {
-                    Label("Split Columns", systemImage: "rectangle.split.2x1")
-                }
-                Button { act(.split(.vertical), zone, layout) } label: {
-                    Label("Split Rows", systemImage: "rectangle.split.1x2")
-                }
-                Button { act(.equalizeSiblings, zone, layout) } label: {
-                    Label("Even Out", systemImage: "equal.square")
-                }
-                Button(role: .destructive) { act(.delete, zone, layout) } label: {
-                    Label("Delete", systemImage: "trash")
-                }
-                .keyboardShortcut(.delete, modifiers: .command)
-                .disabled(layout.root.zoneCount < 2)
+            // Full labels when there's room, icons with tooltips when the window is narrow.
+            ViewThatFits(in: .horizontal) {
+                zoneButtons(for: layout).labelStyle(.titleAndIcon)
+                zoneButtons(for: layout).labelStyle(.iconOnly)
             }
-            .disabled(selectedZoneID == nil)
-            .labelStyle(.titleAndIcon)
 
-            Spacer()
+            Spacer(minLength: 0)
 
             GapControls(gaps: $store.config.gaps)
 
@@ -176,7 +162,40 @@ struct EditorView: View {
         .controlSize(.regular)
     }
 
+    private func zoneButtons(for layout: ZoneLayout) -> some View {
+        let zone = selectedZone(in: layout)
+        return HStack(spacing: 4) {
+            Button { act(.split(.horizontal), zone, layout) } label: {
+                Label("Split Columns", systemImage: "rectangle.split.2x1")
+            }
+            .help("Split the selected zone into two columns")
+            Button { act(.split(.vertical), zone, layout) } label: {
+                Label("Split Rows", systemImage: "rectangle.split.1x2")
+            }
+            .help("Split the selected zone into two rows")
+            Button { act(.equalizeSiblings, zone, layout) } label: {
+                Label("Even Out", systemImage: "equal.square")
+            }
+            .help("Make the selected zone and its neighbours the same size")
+            Button(role: .destructive) { act(.delete, zone, layout) } label: {
+                Label("Delete", systemImage: "trash")
+            }
+            .help("Delete the selected zone (⌘⌫)")
+            .keyboardShortcut(.delete, modifiers: .command)
+            .disabled(layout.root.zoneCount < 2)
+        }
+        .disabled(zone == nil)
+        .fixedSize()
+    }
+
     // MARK: - State
+
+    /// The selected zone, falling back to the layout's first zone so the zone
+    /// actions always have something to act on.
+    private func selectedZone(in layout: ZoneLayout) -> UUID? {
+        if let id = selectedZoneID, layout.root.contains(id) { return id }
+        return layout.root.zoneIDs.first
+    }
 
     private var selectedLayout: ZoneLayout? {
         selectedLayoutID.flatMap { id in store.config.layouts.first { $0.id == id } }
@@ -197,6 +216,7 @@ struct EditorView: View {
         if selectedLayoutID == nil {
             selectedLayoutID = current.map { store.layout(for: $0).id } ?? store.config.layouts.first?.id
         }
+        selectedZoneID = selectedLayout?.root.zoneIDs.first
     }
 
     private func rootBinding(_ id: UUID) -> Binding<LayoutNode> {
@@ -226,8 +246,10 @@ struct EditorView: View {
                     selectedZoneID = created
                 }
             case .delete:
+                let index = layout.root.zoneIDs.firstIndex(of: zoneID) ?? 0
                 if layout.root.removeZone(zoneID) {
-                    selectedZoneID = nil
+                    let remaining = layout.root.zoneIDs
+                    selectedZoneID = remaining[min(max(index - 1, 0), remaining.count - 1)]
                 }
             case .equalizeSiblings:
                 if let parent = layout.root.parent(of: zoneID) {
