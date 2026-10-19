@@ -116,3 +116,7 @@ quits. It needs no permissions and doesn't touch your config. Native controls
 - Full-screen windows and windows of apps that don't support Accessibility
   can't be snapped.
 - Not sandboxed, so it can't ship on the Mac App Store.
+
+## License
+
+[MIT](LICENSE)
